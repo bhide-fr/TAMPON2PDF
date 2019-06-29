@@ -1,123 +1,129 @@
-#!/usr/bin/python3
+#!usr/bin/python3
 
-import PySimpleGUI as sg
+import fitz, shutil
+from fitz.utils import getColor
 
-print = sg.EasyPrint
-
-layout = [[sg.Text('(Les numéros de pièces seront ajoutés automatiquement. Mettre uniquement "Pièce n°" en 3e ligne.):')],
-            [sg.Text('Dossier des fichiers pdfs à tamponner (dont les noms commencent par 001, 002, ..)', size=(35, 2)), sg.InputText(), sg.FolderBrowse()],
-            [sg.Text('Dossier dans lequel les pdfs tamponnés seront enregistrés:', size=(35, 2)), sg.InputText(), sg.FolderBrowse()],
-            [sg.Text('1ère ligne du tampon:', size=(35, 2)), sg.InputText()],
-            [sg.Text('2ème ligne du tampon:', size=(35, 2)), sg.InputText()],
-            [sg.Text('3ème ligne du tampon ("Pièce n.")', size=(35, 2)), sg.InputText()],
-            [sg.Checkbox('Tamponner chaque page du fichier? (Seulement la 1ère page par défaut)', size=(65,2), default=False)],
-            [sg.Submit(), sg.Cancel()]]
-
-
-import fitz
-import shutil
 from os import listdir
 from os.path import isdir, isfile, join
 
-
-window = sg.Window('Inputs', layout)
-
-event, value_list = window.Read()
-input_path = value_list[0]
-output_path = value_list[1]
-line_one = value_list[2]
-line_two = value_list[3]
-line_three = value_list[4]
-stampall = value_list[5]
-maxstring = max((len(line_one)), (len(line_two)),(len(line_three) + 4))
-leftwidth = maxstring*7+26
-
-from fitz.utils import getColor
-
-yellow  = getColor("darkgoldenrod")
-black   = getColor("black")
-white   = getColor("white")
-red     = getColor("red")
-wood    = getColor("wheat2")
-wood2 = getColor("wheat3")
-
-print("Tamponner toutes le pages:", stampall)
-print("Char. max.:", maxstring)
-
-# stamps_path = input()
-
-#print("\n Enter the full path to the OUTPUT folder:")
-
-#output_path = input()
-
-print("Dossier des fichiers à tamponner: ", input_path, '\n' \
-        #"Stamps file/folder: ", stamps_path, '\n' \
-        "Dossier des fichiers tamponnées: ", output_path, '\n')
-
-input_files = [f for f in listdir(input_path) if isfile(join(input_path, f))]
-
-print("Fichiers à tamponner: ", input_files, '\n')
+import PySimpleGUI as sg
 
 
-for i in input_files:
+print = sg.EasyPrint
 
-    doc = fitz.open(f"{input_path}/{i}")
+fonts = ["Helvetica", "Helvetica-Oblique", "Helvetica-Bold",
+         "Helvetica-BoldOblique", "Courier", "Courier-Oblique",
+         "Courier-Bold", "Courier-BoldOblique", "Times-Roman",
+         "Times-Italic", "Times-Bold", "Times-BoldItalic"]
+colors = {"Noir": getColor("black"), "Blanc": getColor("white"),
+         "Rouge": getColor("red"), "Bleu": getColor("blue")}
 
-    text = [f"{line_one}", f"{line_two}", f"{line_three} {i[:3]}"]
+layout = [
+    [sg.Text('Pour les tampons numérotés : le nom des fichiers originaux doit commencer par 001, 002,..\nLe numéro de tampon sera identique aux trois premiers caractères du nom de fichier.\nPar exemple, un fichier nommé A14-Défense aura pour numéro de tampon les caractères <<A14>>\nMettre <<Pièce n°>> en 3e ligne le cas échéant.')],
+    [sg.Text('Dossier des fichiers pdf à tamponner:',
+             size=(35, 2)), sg.InputText(), sg.FolderBrowse("Parcourir", size=(10, 1))],
+    [sg.Text('Dossier dans lequel les fichiers tamponnées seront enregistrés:', size=(35, 2)),
+            sg.InputText(), sg.FolderBrowse("Parcourir", size=(10, 1))],
+    [sg.Text('1re ligne du tampon:', size=(35, 2)), sg.InputText()],
+    [sg.Text('2e ligne du tampon:', size=(35, 2)), sg.InputText()],
+    [sg.Text('3e ligne du tampon (<<Pièce n°>>)', size=(35, 2)), sg.InputText()],
+    [sg.Frame(layout=[
+        [sg.Radio('Tamponner toutes les pages', "RADIO1", default=True, size=(35, 1)),
+        sg.Radio('Tamponner seulement la page n°', "RADIO1"), sg.InputText(size=(3, 1))],
+        [sg.Checkbox('Numéroter les tampons (001, 002..)', size=(35, 1), default=False),
+        sg.Text('Police:'), sg.InputCombo((fonts), size=(18, 1)),
+        sg.Text('Couleur:'), sg.InputCombo((list(colors.keys())), size=(12, 1))] ],
+        title='Options', title_color='red', relief=sg.RELIEF_SUNKEN, tooltip='Use these to set options')],
+    [sg.Submit("Tamponner"), sg.Cancel("Annuler")]
+    ]
 
-    if stampall == True:
-
-        for page in doc:
-
-            r1 = fitz.Rect(page.rect.width - leftwidth, page.rect.height - 65, page.rect.width - 25, page.rect.height - 20) # directly define rectangle using page.rect
-
-            # p2 = fitz.Point(page.rect.width - 25, page.rect.height - 25)
-
-            page.drawRect(r1, color=black, fill=white, overlay=True) # Draw first to give properties
-
-            rc = page.insertTextbox(r1, text, color = black, align=1, fontname="Courier", border_width=2)
-
-        doc.save(f"{i}")
-
-    else:
-
-        page = doc[0]
-
-        text = [f"{line_one}", f"{line_two}", f"{line_three} {i[:3]}"]
-
-            #r1 = fitz.Rect(400,750,550,800)   # rectangle (x0, y0, x1, y1) in pixels, bottom right For upper right try fitz.Rect(450,20,550,120)
-
-        r1 = fitz.Rect(page.rect.width - leftwidth, page.rect.height - 65, page.rect.width - 25, page.rect.height - 20)
-
-            # p2 = fitz.Point(page.rect.width - 25, page.rect.height - 25)
-
-        page.drawRect(r1, color=black, fill=white, overlay=True) # Draw first to give properties
-
-        rc = page.insertTextbox(r1, text, color = black, align=1, fontname="Courier", border_width=2) #Default : align=TEXT_ALIGN_LEFT (0) ; border_width=1 TEXT_ALIGN_CENTER
-
-    doc.save(f"{i}")
-
-# Check usage for doc.name Runtime error: cannot open file 'stamped-/home/xxx/xxx/Original.pdf': No such file or directory
-
-
-output_files = [f for f in listdir(".") if isfile(join(".", f))]
-print("Fichiers tamponnés:")
-for f in output_files:
-    if f[-3:] == "pdf":
-        print(f)
-
-def output(output_path):
-    for f in output_files:
-        if f[-3:] == "pdf":
-            shutil.move(f, output_path)
-
-output(output_path)
+jobNo = 1
+window = sg.Window('Tampons PDFs numérotées ou non numérotés', layout)
 
 while True:
-    event, values = window.Read()
+    event, value_list = window.Read()
     if event is None or event == 'Cancel':
         break
+    
+    print("Job No:", jobNo)
+
+    input_path = value_list[0]
+    output_path = value_list[1]
+    line_one = value_list[2]
+    line_two = value_list[3]
+    line_three = value_list[4]
+    stampAll = value_list[5]
+    stampPage = value_list[6]
+    pageNo = value_list[7]
+    stampNumbers = value_list[8]
+    font = value_list[9]
+    color = colors[value_list[10]]
+    border = True
+    overlay = True
+
+    maxstring = max(len(line_one), len(line_two), (len(line_three)+4))
+    leftwidth = 27 + (7 * maxstring)
+    formatting = [color, font, overlay]
+
+    if stampAll:
+        print("Tamponnage de toutes les pages.")
+    else:
+        print("Tamponnage de la page n°", f'{pageNo}')
+    if stampNumbers:
+        print("Tampons numérotés")
+    else:
+        print('Tampons non numérotés.')
+    print("Dossier des fichiers pdf à tamponner", input_path,
+        "\nDossier dans lequel les fichiers tamponnées seront enregistrés:", output_path)
+
+    input_files = [f for f in listdir(input_path)
+                    if isfile(join(input_path, f))]
+    output_files = []
+
+    print('\n', "Fichiers à tamponner: ")
+    for i in range(len(input_files)):
+        print(i + 1, input_files[i])
 
 
+    def draw(page):
+        '''This function does the stamping.'''
+        box = fitz.Rect(page.rect.width - leftwidth,
+                        page.rect.height - 65,
+                        page.rect.width - 25,
+                        page.rect.height - 20)
+        page.drawRect(box, color=colors["Noir"], fill=colors["Blanc"], overlay=True)
+        page.insertTextbox(
+            box, text, color=color, align=1, fontname=font, border_width=2)
+
+    def output(output_path):
+        '''This function moves the files to output folder.'''
+        for f in output_files:
+            shutil.move(f, output_path)
 
 
+    for f in input_files:
+        doc = fitz.open(f"{input_path}/{f}")
+        stamp_numbers = stampNumbers and f[:3].isdigit()
+        text = [f"{line_one}", f"{line_two}", f"{line_three}"]
+
+        if stamp_numbers:
+            text[2] = f"{line_three} " f"{f[:3]}"
+        if stampAll:
+            for page in doc:
+                draw(page)
+        else:
+            draw(doc[int(pageNo) - 1])
+        
+        doc.save(f"{f}")
+        output_files.append(f)
+
+    output(output_path)
+
+    print('\n', "Fichiers tamponnés:")
+    for i in range(len(output_files)):
+        print(i + 1, output_files[i])
+
+    print('\n', "Vous pouvez les retrouver dans le dossier:", f"{output_path}", '\n\n')
+    jobNo += 1
+
+window.Close()
